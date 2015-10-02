@@ -1,4 +1,5 @@
 require_relative 'console'
+require 'yaml'
 
 module HangMan
 
@@ -15,6 +16,29 @@ module HangMan
       play_game
     end
 
+    def load_game
+      puts "Would you like to load the last game you saved? (yes or no)"
+      response = gets.chomp
+      load_or_play(response)
+    end
+
+    def load_or_play(response)
+      if response == "yes"
+        output = File.new('game_state.yaml', 'r')
+        data = YAML.load(output.read)
+        @chosen_word = data[0]
+        @turns = data[1]
+        @word_reveal = data[2]
+        @incorrect_letters_array = data[3]
+        output.close  
+      end
+
+    end
+
+    def exit_game
+      abort("Your game has been saved")
+    end
+
     def pick_word
       chosen_word = File.readlines("dictionary.txt").sample.strip.downcase
       while chosen_word.length > 12 || chosen_word.length < 5
@@ -24,20 +48,24 @@ module HangMan
     end
 
     def play_game
+      load_game
+      add_limb(@turns)
       puts "The word is:"
-      hidden_word
+      hide_word
       game_loop
     end
 
-    def hidden_word
-      (chosen_word.length).times do 
-        word_reveal << "_"
+    def hide_word
+      if incorrect_letters_array.empty?
+        (chosen_word.length).times do 
+          word_reveal << "_"
+        end
       end
       puts word_reveal.join(" ")
     end
 
     def user_guess
-      puts "Please choose a letter"
+      puts "Please choose a letter (or type 'save' to save your game)"
       @guess = gets.chomp.downcase
     end
 
@@ -56,6 +84,12 @@ module HangMan
         show_letters(@guess)
         puts word_reveal.join(" ")
         puts "Incorrect letters: #{incorrect_letters_array}"
+      elsif @guess == "save"
+        data = [chosen_word, @turns, word_reveal, incorrect_letters_array]
+        output = File.new('game_state.yaml', 'w')
+        output.puts YAML.dump(data)
+        output.close
+        exit_game
       else
         @turns += 1
         add_limb(@turns)
