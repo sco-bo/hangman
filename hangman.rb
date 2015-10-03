@@ -1,8 +1,8 @@
 require_relative 'console'
 require 'yaml'
+require 'colored'
 
 module HangMan
-
   class Game
     attr_accessor :chosen_word, :word_reveal, :incorrect_letters_array, :display
 
@@ -12,6 +12,7 @@ module HangMan
       @turns = 0
       @word_reveal = Array.new
       @incorrect_letters_array = Array.new
+      display.hangman_banner
       display.gallows
       play_game
     end
@@ -32,11 +33,10 @@ module HangMan
         @incorrect_letters_array = data[3]
         output.close  
       end
-
     end
 
     def exit_game
-      abort("Your game has been saved")
+      abort("Goodbye!")
     end
 
     def pick_word
@@ -52,7 +52,12 @@ module HangMan
       add_limb(@turns)
       puts "The word is:"
       hide_word
+      show_incorrect_letters
       game_loop
+    end
+
+    def show_incorrect_letters
+      puts "Incorrect Letters: #{incorrect_letters_array}".red
     end
 
     def hide_word
@@ -80,10 +85,10 @@ module HangMan
       puts "#{6 - @turns} guess(es) left"
       if chosen_word.include?(user_guess)
         add_limb(@turns)
-        puts "Correct!"
-        show_letters(@guess)
+        puts "Correct!".green
+        display_letters(@guess)
         puts word_reveal.join(" ")
-        puts "Incorrect letters: #{incorrect_letters_array}"
+        show_incorrect_letters
       elsif @guess == "save"
         data = [chosen_word, @turns, word_reveal, incorrect_letters_array]
         output = File.new('game_state.yaml', 'w')
@@ -95,7 +100,7 @@ module HangMan
         add_limb(@turns)
         puts word_reveal.join(" ")
         incorrect_guesses(@guess)
-        puts "Incorrect letters: #{incorrect_letters_array}"
+        show_incorrect_letters
       end
     end
 
@@ -103,22 +108,34 @@ module HangMan
       incorrect_letters_array << incorrect_guess
     end
 
-    def show_letters(guess)
+    def display_letters(guess)
       indices = chosen_word.split("").each_index.select {|i| chosen_word[i] == guess}
       indices.each {|i| word_reveal[i] = guess}
     end
 
     def game_over
       if @turns == 6
-        puts "Game Over!"
-        puts "The word was \"#{chosen_word}\""
+        puts "Game Over!".cyan
+        puts "The word was \"#{chosen_word}\"".cyan
+        play_again
+      end
+    end
+
+    def play_again
+      puts "Would you like to play again? (yes or no)"
+      answer = gets.chomp
+      if answer == "yes"
+        HangMan::Game.new
+      else
+        exit_game
       end
     end
 
     def victory
       if word_reveal.join("") == chosen_word
-        puts "Victory! You have been spared the gallows."
+        puts "Victory! You have been spared the gallows.".cyan
         display.free
+        play_again
         true
       end
     end
@@ -141,15 +158,18 @@ module HangMan
         display.gallows
       end
     end
-
   end
 
   class Display
     attr_reader :delegate
 
     def initialize(delegate = Console.new)
-      puts "Welcome to Hangman!"
+      puts "Welcome to..."
       @delegate = delegate
+    end
+
+    def hangman_banner
+      delegate.hangman_banner
     end
 
     def gallows
